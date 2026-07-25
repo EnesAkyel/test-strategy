@@ -1,7 +1,7 @@
 # API Testing Strategy - api-testing-java
 
 **Project:** [`api-testing-java`](https://github.com/EnesAkyel/api-testing-java)  
-**Stack:** Java 21 · REST Assured · TestNG · Allure · Maven  
+**Stack:** Java 25 · REST Assured 6 · JUnit 5 · Allure · Maven  
 **Target app:** [`movie-catalog-api`](https://github.com/EnesAkyel/movie-catalog-api) (Spring Boot REST API)
 
 ---

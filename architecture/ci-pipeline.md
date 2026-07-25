@@ -114,7 +114,7 @@ The polling step prevents tests from starting against a partially initialized Sp
 ## gatling-performance-tests
 
 **Triggers:** push to `main`, every pull request, manual dispatch  
-**Platform:** GitHub Actions · `ubuntu-latest` · Java 21 (Temurin)
+**Platform:** GitHub Actions · `ubuntu-latest` · Java 25 (Temurin)
 
 ```mermaid
 flowchart LR
@@ -145,7 +145,7 @@ The Gatling HTML report is uploaded as an artifact with a 30-day retention windo
 ## RestAssuredContractTest
 
 **Triggers:** push to `main`, every pull request  
-**Platform:** GitHub Actions · `ubuntu-latest` · Java 21 (Temurin)
+**Platform:** GitHub Actions · `ubuntu-latest` · Java 25 (Temurin)
 
 ```mermaid
 flowchart LR
@@ -173,7 +173,7 @@ flowchart LR
 ## selenium-java
 
 **Triggers:** push to `main`, every pull request  
-**Platform:** GitHub Actions · `ubuntu-latest` · Java 21 (Temurin)
+**Platform:** GitHub Actions · `ubuntu-latest` · Java 25 (Temurin)
 
 ```mermaid
 flowchart LR
@@ -207,7 +207,7 @@ Both jobs publish a test summary via `dorny/test-reporter` using `TEST-*.xml` (J
 ## api-testing-java
 
 **Triggers:** push to `main`, every pull request  
-**Platform:** GitHub Actions · `ubuntu-latest` · Java 21 (Temurin)
+**Platform:** GitHub Actions · `ubuntu-latest` · Java 25 (Temurin)
 
 ```mermaid
 flowchart LR
