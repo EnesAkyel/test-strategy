@@ -2,7 +2,7 @@
 
 ## Portfolio map
 
-Six projects, five tools, four applications under test. This diagram shows how they all relate.
+Seven projects, six tools, five applications under test. This diagram shows how they all relate.
 
 ```mermaid
 graph TB
@@ -10,6 +10,7 @@ graph TB
         SD["SauceDemo saucedemo.com"]
         JP["JSONPlaceholder jsonplaceholder.typicode.com"]
         MC["movie-catalog-api Spring Boot REST API"]
+        MU["movie-catalog-ui Angular 22 front end"]
         RM["Rick & Morty API rickandmortyapi.com"]
         OH["OrangeHRM opensource-demo.orangehrmlive.com"]
     end
@@ -18,6 +19,7 @@ graph TB
         PW["playwright-ts TypeScript · Playwright"]
         AT["api-testing-ts TypeScript · Jest · Axios · AJV"]
         AJ["api-testing-java Java · REST Assured · TestNG"]
+        MUT["movie-catalog-ui (self) TypeScript · Angular 22 · Vitest"]
         GA["gatling-performance-tests Java · Gatling"]
         RA["RestAssuredContractTest Java · REST Assured · TestNG"]
         SJ["selenium-java Java · Selenium · TestNG · PageFactory"]
@@ -27,6 +29,8 @@ graph TB
     PW -->|"API functional · hybrid API+UI"| JP
     AT -->|"smoke · contract · regression"| MC
     AJ -->|"smoke · contract · integration · regression"| MC
+    MUT -->|"component/unit"| MU
+    MU -.->|"HTTP (runtime, not test-time)"| MC
     GA -->|"load · stress · spike · soak"| JP
     RA -->|"contract · negative"| RM
     SJ -->|"E2E login · PIM · Leave"| OH
@@ -46,7 +50,7 @@ flowchart TD
     E["🌐 E2E / UI playwright-ts - SauceDemo full checkout, cart, auth selenium-java - OrangeHRM login · PIM · Leave"]
     C["📋 Contract api-testing-ts - AJV schema files for movie-catalog-api api-testing-java - inline REST Assured assertions for movie-catalog-api RestAssuredContractTest - JSON Schema for Rick & Morty API playwright-ts - inline response shape assertions"]
     F["🔗 API Functional api-testing-ts - CRUD + filter + negative paths api-testing-java - CRUD + studios + movies playwright-ts - JSONPlaceholder hybrid flows"]
-    U["🧪 Unit playwright-ts - DataFactory + utility tests"]
+    U["🧪 Unit playwright-ts - DataFactory + utility tests movie-catalog-ui - components · forms · pipes (Vitest)"]
 
     V --> P --> A --> E --> C --> F --> U
 ```
@@ -99,12 +103,34 @@ flowchart TD
     RA["Resource APIs MoviesApi · StudiosApi"]
     AJV["AJV Validator compiled JSON Schema validators"]
     CM["Custom Matcher toRespondWithin(ms)"]
-    APP["movie-catalog-api Spring Boot · H2 / PostgreSQL"]
+    APP["movie-catalog-api Spring Boot · PostgreSQL 16"]
 
     T --> RA --> AC -->|HTTP| APP
     T -->|"schema assertions"| AJV
     T -->|"latency assertions"| CM
 ```
+
+---
+
+## movie-catalog-ui internal architecture
+
+```mermaid
+flowchart TD
+    T["Vitest Specs one per component/service/pipe"]
+    TB["Angular TestBed renders components with DI"]
+    HTC["HttpTestingController intercepts every MovieService call"]
+    MS["MovieService HttpClient wrapper"]
+    RF["Reactive Forms FormBuilder + CustomValidator"]
+    APP["movie-catalog-api real backend (not hit in tests)"]
+
+    T -->|"renders via"| TB
+    TB -->|"drives"| RF
+    T -->|"asserts requests via"| HTC
+    HTC -->|"intercepts"| MS
+    MS -.->|"HTTP (real, dev/E2E only)"| APP
+```
+
+No test in this suite reaches the real backend - `HttpTestingController` intercepts and flushes every `MovieService` call, keeping the suite deterministic and fast. See [movie-catalog-ui strategy](../strategy/movie-catalog-ui.md) for what's covered per component.
 
 ---
 

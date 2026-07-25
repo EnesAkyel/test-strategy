@@ -1,7 +1,7 @@
 # UI Automation Strategy - selenium-java
 
 **Project:** [`selenium-java`](https://github.com/EnesAkyel/selenium-java)  
-**Stack:** Java 21 · Selenium WebDriver 4 · TestNG · PageFactory · AspectJ 1.9.25.1 · Allure · Maven Surefire  
+**Stack:** Java 25 · Selenium WebDriver 4 · TestNG · PageFactory · AspectJ 1.9.25.1 · Allure · Maven Surefire  
 **Target:** [OrangeHRM](https://opensource-demo.orangehrmlive.com) - open-source HR management system
 
 ---
@@ -44,7 +44,7 @@ All page objects use `@FindBy` annotations and `PageFactory.initElements()`. Loc
 
 ### AspectJ load-time weaving
 
-Allure's `@Step` annotation requires AspectJ to intercept method calls at runtime. The Maven Surefire plugin is configured with the AspectJ Weaver as a `-javaagent`. Version `1.9.25.1` is required for Java 21 compatibility (class file major version 65).
+Allure's `@Step` annotation requires AspectJ to intercept method calls at runtime. The Maven Surefire plugin is configured with the AspectJ Weaver as a `-javaagent`. Version `1.9.25.1` is required for Java 25 compatibility.
 
 ### RetryAnalyzer
 

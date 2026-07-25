@@ -118,6 +118,16 @@ Risk assessment across the full portfolio. Each area is rated by **likelihood** 
 
 ---
 
+### movie-catalog-ui - no E2E coverage yet - 🟡 Medium
+
+**Why it breaks:** `movie-catalog-ui` currently has component/unit coverage only (Vitest + Angular TestBed). Cross-component integration - a full add → search → filter → sort → edit → delete journey against a real running backend - is not exercised by any automated test. A regression that only manifests when real routing, real HTTP round-trips, and multiple components interact would pass the component suite and CI.
+
+**Impact:** A broken end-to-end user journey could ship undetected, since `api-testing-ts` / `api-testing-java` cover the API in isolation and the Vitest suite covers each UI component in isolation, but nothing currently covers the two together.
+
+**Coverage:** Mitigated for now by [`movie-catalog-ui`](movie-catalog-ui.md)'s deliberate testability-by-design (`data-testid` conventions, real `<button>` elements, `role="alert"` / `aria-live` notifications) built specifically so a Playwright E2E suite can be added without retrofitting the markup. Not yet built - tracked as planned work, not an accepted gap.
+
+---
+
 ### Flaky tests - 🟢 Low (contained)
 
 **Why it happens:** Timing-dependent assertions, shared state, or environment instability produce intermittent failures.
