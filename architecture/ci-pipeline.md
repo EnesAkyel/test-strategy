@@ -204,6 +204,43 @@ Both jobs publish a test summary via `dorny/test-reporter` using `TEST-*.xml` (J
 
 ---
 
+## k6-performance-tests
+
+**Triggers:** push to `main`, every pull request, manual dispatch  
+**Platform:** GitHub Actions · `ubuntu-latest` · Node.js 24
+
+```mermaid
+flowchart LR
+    API["checkout + build movie-catalog-api docker compose up + health poll"]
+    BLD["npm ci + npm run build esbuild bundles TypeScript"]
+    K6["k6 run dist/smoke.js -e BASE_URL=http://localhost:8080"]
+    UP["upload summary.json 30-day retention"]
+
+    API --> BLD --> K6 --> UP
+```
+
+### Stages
+
+**API bootstrap** - checks out `EnesAkyel/movie-catalog-api`, sets up Java 25, builds the JAR with `./mvnw package -DskipTests -q`, builds a Docker image from it, starts `docker compose up -d`, then polls `GET /api/v1/movies` every 5 seconds for up to 150 seconds.
+
+**Build** - runs `npm ci` then `npm run build` (esbuild), which transpiles all four TypeScript scenario files to CommonJS in `dist/`.
+
+**Run** - executes the smoke scenario (`k6 run dist/smoke.js`) against `http://localhost:8080`. On manual dispatch, the operator selects which scenario to run from a dropdown.
+
+**Upload** - uploads `summary.json` as an artifact with 30-day retention.
+
+The k6 job also runs as part of the `movie-catalog-api` CI pipeline (`ci.yml`) — it is triggered there as a `k6` job that reuses the pre-built JAR artifact from the `build` job via the `.github/actions/start-api` composite action, keeping startup consistent across all performance jobs.
+
+### Key decisions
+
+**Two-repo checkout in standalone mode** - the k6 repo checks out `movie-catalog-api` at runtime and builds the JAR from source. This ensures the API under test is always the current `main`, not a stale deployed instance.
+
+**Smoke only on automatic triggers** - load, stress, and spike run for minutes and generate sustained traffic against the API. They are gated behind `workflow_dispatch` so the operator chooses when to run them deliberately.
+
+**npm ci --ignore-scripts** - esbuild ships an install script. Passing `--ignore-scripts` to `npm ci` prevents it from running automatically in CI, which avoids a permissions warning without affecting the build (esbuild's install script only downloads the platform-specific binary; the main package entry handles this separately).
+
+---
+
 ## api-testing-java
 
 **Triggers:** push to `main`, every pull request  
