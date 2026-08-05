@@ -16,7 +16,7 @@ The portfolio already has three layers of contract coverage for `movie-catalog-a
 
 Schema validation answers "does the response match this shape?" CDC answers a different question: **"does the provider still satisfy every interaction the consumer has declared it depends on?"**
 
-The key difference is directionality. In CDC, the consumer publishes a contract (a pact file) that says "I call this endpoint with these parameters and expect this structure." The provider then verifies it can fulfil that contract. If the provider changes a field name or removes an endpoint, verification fails — even if no schema file was updated to reflect the change.
+The key difference is directionality. In CDC, the consumer publishes a contract (a pact file) that says "I call this endpoint with these parameters and expect this structure." The provider then verifies it can fulfil that contract. If the provider changes a field name or removes an endpoint, verification fails - even if no schema file was updated to reflect the change.
 
 ---
 
@@ -43,9 +43,9 @@ Write operations (POST, PUT, DELETE) are deliberately excluded. CDC is most valu
 
 All interactions use Pact V4 matchers from `MatchersV3`:
 
-- **`like()`** — type matcher. The value in the pact file is an example; the real response just needs to match the type. Used on the full response body so example data doesn't hard-code into the contract.
-- **`eachLike()`** — array type matcher. Asserts the response contains at least one element of the given shape. Used on `content` arrays in paginated responses.
-- **`integer()`** / **`decimal()`** / **`string()`** — primitive type matchers. Pinpoints the type of each field without coupling the contract to a specific value.
+- **`like()`** - type matcher. The value in the pact file is an example; the real response just needs to match the type. Used on the full response body so example data doesn't hard-code into the contract.
+- **`eachLike()`** - array type matcher. Asserts the response contains at least one element of the given shape. Used on `content` arrays in paginated responses.
+- **`integer()`** / **`decimal()`** / **`string()`** - primitive type matchers. Pinpoints the type of each field without coupling the contract to a specific value.
 
 This combination means the contract captures the **structure** the consumer needs without being brittle to data changes in the provider's seed dataset.
 
@@ -55,7 +55,7 @@ This combination means the contract captures the **structure** the consumer need
 
 Each interaction declares a `given(...)` state (e.g. `"movie with ID 1001 exists"`). The provider verification spec registers a handler for every state. All handlers are currently no-ops because the Flyway-seeded dataset satisfies every interaction at startup without any setup logic.
 
-The handlers are still registered explicitly — they are the single place to add real database setup if the seed data ever changes or if the project moves away from in-memory storage.
+The handlers are still registered explicitly - they are the single place to add real database setup if the seed data ever changes or if the project moves away from in-memory storage.
 
 ---
 
@@ -74,12 +74,12 @@ Both are useful; they answer different questions. This project complements `api-
 
 ### Pact vs Spring Cloud Contract
 
-Spring Cloud Contract requires the contract to live in the provider's repository and generates both consumer stubs and provider tests from it. That is the right model when both sides of the API are owned by the same team. This portfolio uses Pact because the consumer is an external test project — the consumer-owns-the-contract model is the better fit.
+Spring Cloud Contract requires the contract to live in the provider's repository and generates both consumer stubs and provider tests from it. That is the right model when both sides of the API are owned by the same team. This portfolio uses Pact because the consumer is an external test project - the consumer-owns-the-contract model is the better fit.
 
 ---
 
 ## What is not covered
 
-- **Write operations** — POST/PUT/DELETE interactions are not in scope. Functional correctness of writes is covered by `api-testing-ts` and `api-testing-java`.
-- **Pact Broker** — no broker is used. The pact file is passed between CI jobs via GitHub Actions artifacts and committed to the repository. A broker would add value at scale (multiple consumers, can-i-deploy checks) but is unnecessary for a single consumer–provider pair.
-- **Authentication** — the current API has no auth. Once the JWT login feature is implemented, a login interaction and `Authorization` header will need to be added to all interactions.
+- **Write operations** - POST/PUT/DELETE interactions are not in scope. Functional correctness of writes is covered by `api-testing-ts` and `api-testing-java`.
+- **Pact Broker** - no broker is used. The pact file is passed between CI jobs via GitHub Actions artifacts and committed to the repository. A broker would add value at scale (multiple consumers, can-i-deploy checks) but is unnecessary for a single consumer–provider pair.
+- **Authentication** - the current API has no auth. Once the JWT login feature is implemented, a login interaction and `Authorization` header will need to be added to all interactions.
