@@ -14,7 +14,7 @@ It explains what was built, why each tool was chosen, what risks each layer addr
 
 ## Portfolio
 
-Eight projects covering the full testing pyramid across five applications.
+Nine projects covering the full testing pyramid across five applications.
 
 | Project                                                                             | Language / Tool                        | Test Types                                                                | Application                 |
 |-------------------------------------------------------------------------------------|----------------------------------------|---------------------------------------------------------------------------|-----------------------------|
@@ -25,6 +25,7 @@ Eight projects covering the full testing pyramid across five applications.
 | [gatling-performance-tests](https://github.com/EnesAkyel/gatling-performance-tests) | Java · Gatling                         | Load · Stress · Spike · Soak                                              | JSONPlaceholder             |
 | [k6-performance-tests](https://github.com/EnesAkyel/k6-performance-tests)           | TypeScript · k6 · esbuild              | Smoke · Load · Stress · Spike                                             | movie-catalog-api           |
 | [RestAssuredContractTest](https://github.com/EnesAkyel/RestAssuredContractTest)     | Java · REST Assured · TestNG           | Contract · Negative                                                       | Rick & Morty API            |
+| [pact-contract-tests](https://github.com/EnesAkyel/pact-contract-tests)             | TypeScript · Pact · Jest               | Consumer-driven contract (CDC) · Provider verification                    | movie-catalog-api           |
 | [selenium-java](https://github.com/EnesAkyel/selenium-java)                         | Java · Selenium · TestNG · PageFactory | E2E · Login · PIM · Leave                                                 | OrangeHRM                   |
 
 ---
@@ -37,7 +38,7 @@ flowchart TD
     P["⚡ Performance playwright-ts - page timing · JS heap gatling-performance-tests - load · stress · spike · soak k6-performance-tests - smoke · load · stress · spike"]
     A["♿ Accessibility playwright-ts - axe-core · keyboard navigation"]
     E["🌐 E2E / UI playwright-ts - SauceDemo checkout · cart · auth selenium-java - OrangeHRM login · PIM · Leave"]
-    C["📋 Contract api-testing-ts - AJV schemas for movie-catalog-api api-testing-java - REST Assured assertions for movie-catalog-api RestAssuredContractTest - JSON Schema for Rick & Morty API"]
+    C["📋 Contract api-testing-ts - AJV schemas for movie-catalog-api api-testing-java - REST Assured assertions for movie-catalog-api RestAssuredContractTest - JSON Schema for Rick & Morty API pact-contract-tests - CDC interactions for movie-catalog-api"]
     F["🔗 API Functional api-testing-ts - CRUD · filters · negative paths api-testing-java - CRUD · studios · movies playwright-ts - JSONPlaceholder hybrid flows"]
     U["🧪 Unit playwright-ts - DataFactory · utility functions movie-catalog-ui - components · forms · pipes (Vitest)"]
 
@@ -60,6 +61,7 @@ flowchart TD
 | [selenium-java](strategy/selenium-java.md)                           | OrangeHRM target, PageFactory POM, AspectJ Allure steps, smoke/regression CI with GitHub Pages     |
 | [api-testing-java](strategy/api-testing-java.md)                     | REST Assured suite separation, movie-catalog-api target, comparison with api-testing-ts            |
 | [movie-catalog-ui](strategy/movie-catalog-ui.md)                     | Vitest component testing, reactive-forms validation, testability-by-design for a planned E2E layer |
+| [pact-contract-tests](strategy/pact-contract-tests.md)               | CDC approach, interaction design, Pact V4 matchers, provider state strategy, tool choice vs schema validation |
 | [Coverage Matrix](strategy/coverage-matrix.md)                       | All frameworks × test types × applications - gaps and rationale                                    |
 | [Risk Areas](strategy/risk-areas.md)                                 | Risk register: likelihood, impact, and coverage for each area                                      |
 
