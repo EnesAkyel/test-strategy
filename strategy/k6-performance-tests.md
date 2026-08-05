@@ -8,7 +8,7 @@
 
 ## Purpose
 
-Where `gatling-performance-tests` targets a public API (JSONPlaceholder) to demonstrate load simulation mechanics, this suite targets the self-owned `movie-catalog-api` — making threshold failures actionable. If a latency threshold is breached here, the problem is in code we control and can fix.
+Where `gatling-performance-tests` targets a public API (JSONPlaceholder) to demonstrate load simulation mechanics, this suite targets the self-owned `movie-catalog-api` - making threshold failures actionable. If a latency threshold is breached here, the problem is in code we control and can fix.
 
 The suite answers four questions:
 
@@ -58,9 +58,9 @@ The load scenario uses k6 `group()` blocks to isolate `movies` and `studios` lat
 
 Thresholds are defined inline per scenario, not in a shared config, because each scenario has a different performance contract:
 
-- **Smoke** enforces tight SLAs (`p95 < 500ms`, `error rate < 1%`) — under 1 VU the API should be fast.
-- **Load** enforces normal production SLAs (`p95 < 800ms`) — 10 concurrent users is realistic traffic.
-- **Stress and spike** relax thresholds significantly — their purpose is to find the breaking point, not enforce SLAs.
+- **Smoke** enforces tight SLAs (`p95 < 500ms`, `error rate < 1%`) - under 1 VU the API should be fast.
+- **Load** enforces normal production SLAs (`p95 < 800ms`) - 10 concurrent users is realistic traffic.
+- **Stress and spike** relax thresholds significantly - their purpose is to find the breaking point, not enforce SLAs.
 
 A threshold failure in the `smoke` or `load` scenario is a genuine regression signal. A failure in `stress` at 40 VUs is expected behavior that documents the system's limits.
 

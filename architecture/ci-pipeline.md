@@ -229,7 +229,7 @@ flowchart LR
 
 **Upload** - uploads `summary.json` as an artifact with 30-day retention.
 
-The k6 job also runs as part of the `movie-catalog-api` CI pipeline (`ci.yml`) — it is triggered there as a `k6` job that reuses the pre-built JAR artifact from the `build` job via the `.github/actions/start-api` composite action, keeping startup consistent across all performance jobs.
+The k6 job also runs as part of the `movie-catalog-api` CI pipeline (`ci.yml`) - it is triggered there as a `k6` job that reuses the pre-built JAR artifact from the `build` job via the `.github/actions/start-api` composite action, keeping startup consistent across all performance jobs.
 
 ### Key decisions
 
@@ -237,7 +237,50 @@ The k6 job also runs as part of the `movie-catalog-api` CI pipeline (`ci.yml`) �
 
 **Smoke only on automatic triggers** - load, stress, and spike run for minutes and generate sustained traffic against the API. They are gated behind `workflow_dispatch` so the operator chooses when to run them deliberately.
 
-**npm ci --ignore-scripts** - esbuild ships an install script. Passing `--ignore-scripts` to `npm ci` prevents it from running automatically in CI, which avoids a permissions warning without affecting the build (esbuild's install script only downloads the platform-specific binary; the main package entry handles this separately).
+**npm ci --ignore-scripts** - esbuild ships an installation script. Passing `--ignore-scripts` to `npm ci` prevents it from running automatically in CI, which avoids a permissions warning without affecting the build (esbuild's install script only downloads the platform-specific binary; the main package entry handles this separately).
+
+---
+
+## pact-contract-tests
+
+**Triggers:** push to `main`, every pull request  
+**Platform:** GitHub Actions · `ubuntu-latest` · Node.js 24
+
+```mermaid
+flowchart LR
+    CS["consumer job npm ci --ignore-scripts + test:consumer"]
+    PF["upload pact file artifact retention 1 day"]
+    API["checkout + build movie-catalog-api docker compose up + health poll"]
+    DL["download pact file artifact"]
+    PV["provider job test:provider BASE_URL=http://localhost:8080"]
+
+    CS --> PF --> API --> DL --> PV
+```
+
+### Stages
+
+**`consumer` job** - runs first, independently of any running API:
+1. Checks out `pact-contract-tests`
+2. Installs dependencies with `npm ci --ignore-scripts` (Pact v17 ships the FFI binary as platform-specific optional npm packages - no postinstall script required)
+3. Runs `npm run test:consumer` - Jest starts a Pact mock server per interaction, executes each test against it, and writes the contract to `pacts/pact-contract-tests-movie-catalog-api.json`
+4. Uploads the pact file as a GitHub Actions artifact (1-day retention)
+
+**`provider` job** - runs after `consumer` (`needs: consumer`):
+1. Checks out both `pact-contract-tests` and `EnesAkyel/movie-catalog-api`
+2. Builds the API JAR (`./mvnw package -DskipTests -q`), builds a Docker image, starts `docker compose up -d`
+3. Polls `GET /api/v1/movies` every 5 seconds until the API is ready
+4. Downloads the pact file artifact from the `consumer` job
+5. Runs `npm run test:provider` - the Pact Verifier replays each recorded interaction against `http://localhost:8080` and asserts the real API satisfies the contract
+
+### Key decisions
+
+**Two sequential jobs, not one** - the consumer tests do not need the real API running; they run against a Pact-managed mock server. Separating the jobs keeps the consumer stage fast and makes it clear which side failed when CI goes red.
+
+**No Pact Broker** - the pact file is passed between jobs via GitHub Actions artifacts and is committed to the repository. A broker adds operational overhead (hosting, token management) that is not justified for a single consumer–provider pair in a portfolio setting.
+
+**`--ignore-scripts` safe here** - Pact v17 (`@pact-foundation/pact-core`) distributes the Rust FFI binary as optional platform-specific npm packages (e.g. `pact-core-linux-x64-glibc`). npm resolves and installs the correct one during `npm ci` without any postinstall hook, so `--ignore-scripts` has no effect on the binary availability.
+
+**No-op state handlers** - each consumer interaction declares a `given(...)` state (e.g. `"movie with ID 1001 exists"`). The provider spec registers no-op handlers for all states because the Flyway-seeded dataset satisfies every interaction at startup. If the seed data changes, the handlers are the single place to add setup logic.
 
 ---
 
