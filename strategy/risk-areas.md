@@ -22,17 +22,17 @@ Risk assessment across the full portfolio. Each area is rated by **likelihood** 
 
 **Impact:** Complete loss of access to authenticated functionality. For an e-commerce app, this means no purchases, no account management, no order history.
 
-**Coverage:** `playwright-ts` - login positive and negative paths, session persistence via storage state reuse, cookie validation in `authPersistence.test.ts`. Auth is the first thing to smoke-test on every deploy.
+**Coverage:** `playwright-ts` - login positive and negative paths (real backend and mocked 401), session persistence via `storageState` reuse, JWT `localStorage` assertions in `authPersistence.test.ts`, and the `authGuard` redirect for every protected route. The valid-login case is tagged `@smoke` and is the first thing exercised on every run.
 
 ---
 
-### Checkout and payment flow - 🔴 High
+### Movie CRUD (add / edit / delete) - 🟡 Medium
 
-**Why it breaks:** Multi-step flows have more surface area. A change to form validation, navigation, or state management in any step silently breaks the one after it.
+**Why it breaks:** Add, edit, and delete each touch reactive-forms validation, a real HTTP round trip, and a redirect-with-state back to the list. A regression in any one step (a validator, the success-banner routing state, the inline delete confirmation) silently breaks the surrounding flow around it.
 
-**Impact:** Direct revenue loss. A broken checkout is the highest-severity UI bug possible in an e-commerce application.
+**Impact:** A broken add/edit/delete flow blocks the app's core purpose - maintaining the catalog. Lower severity than a payment flow (no revenue/financial-transaction risk in this app), but still the primary user journey.
 
-**Coverage:** `playwright-ts` - full E2E checkout flow with `test.step()` for granular failure localization, negative form validation for all required fields, cart state tests.
+**Coverage:** `playwright-ts` - full add and delete flows with `test.step()` for granular failure localization, client + server-side validation (`expect.soft()` for all required-field errors in one pass, mocked 400/409 for server-side/duplicate-MID cases), and the inline Yes/No delete confirmation (not a native dialog - guarded by a `page.on('dialog')` regression test). The edit-mode **submit** path (`PUT`, not just the pre-fill `GET`) is a known gap - tracked as a proposed addition in the [test plan](https://github.com/EnesAkyel/movie-catalog-ui/blob/main/docs/playwright-test-plan.md)'s review-findings section.
 
 ---
 
@@ -45,7 +45,7 @@ Risk assessment across the full portfolio. Each area is rated by **likelihood** 
 **Coverage:**
 - `api-testing-ts` - AJV schema files validate every field in every response from `movie-catalog-api`
 - `RestAssuredContractTest` - JSON Schema classpath files validate Rick & Morty API responses and error bodies
-- `playwright-ts` - inline response shape assertions in API tests
+- `pact-contract-tests` - consumer-driven contract verification catches a breaking `movie-catalog-api` change before it reaches a real consumer
 
 ---
 
@@ -56,7 +56,7 @@ Risk assessment across the full portfolio. Each area is rated by **likelihood** 
 **Impact:** Poor user experience, SEO impact, SLA breaches. Degradation is often gradual and goes undetected until users complain.
 
 **Coverage:**
-- `playwright-ts` - Navigation Timing API asserts DOMContentLoaded and load event budgets; `performance.memory` asserts JS heap budget (Chromium); end-to-end checkout duration threshold
+- `playwright-ts` - Navigation Timing API asserts DOMContentLoaded and load event budgets; `performance.memory` asserts JS heap budget (Chromium only); end-to-end add-movie round-trip duration threshold
 - `gatling-performance-tests` - max response time, 95th percentile, and error rate thresholds enforced across load / stress / spike / soak profiles
 
 ---
@@ -67,7 +67,7 @@ Risk assessment across the full portfolio. Each area is rated by **likelihood** 
 
 **Impact:** Broken layouts, invisible text, overlapping elements. These are caught by users before automated functional tests notice anything.
 
-**Coverage:** `playwright-ts` - full-page and element-level screenshot baselines with `toHaveScreenshot()`. OS-specific baselines (Darwin / Linux) prevent false positives from platform rendering differences. `maxDiffPixelRatio` tolerance handles sub-pixel rendering noise.
+**Coverage:** `playwright-ts` - element-level screenshot baseline (`toHaveScreenshot()`) on the add-movie form grid, a regression guard for its `input`/`select` box-sizing normalization. OS-specific baselines (Darwin / Linux) prevent false positives from platform rendering differences. Currently, a single, narrow case - full-page baselines aren't wired up yet even though the helper for them exists.
 
 **Risk:** Visual tests are excluded from the automated CI regression suite because they require committed baseline files. Intentional UI changes need a manual baseline update via the `update-snapshots` workflow. Unmaintained baselines become a source of false negatives.
 
@@ -79,7 +79,7 @@ Risk assessment across the full portfolio. Each area is rated by **likelihood** 
 
 **Impact:** Excludes users with disabilities. Also, a legal compliance risk under WCAG 2.1 / ADA / EN 301 549.
 
-**Coverage:** `playwright-ts` - axe-core scans on login, inventory, cart, and checkout pages with impact-level filtering. Keyboard Tab order and keyboard-only login flow tested explicitly.
+**Coverage:** `playwright-ts` - axe-core scans (critical-impact violations) on the login, list, add-movie, and detail pages. A keyboard-only login → search → detail → back flow is tested explicitly with `page.keyboard`, never a single mouse `click()`.
 
 **Limitation:** axe-core catches automatable violations only - roughly 30–40% of WCAG issues. Manual a11y review is required for the remainder.
 
@@ -91,7 +91,7 @@ Risk assessment across the full portfolio. Each area is rated by **likelihood** 
 
 **Impact:** Features are broken for a subset of users depending on their browser.
 
-**Coverage:** `playwright-ts` CI regression runs on Chromium. Nightly scheduled run adds Firefox. `performance.memory` tests are skipped on non-Chromium browsers (`test.skip(browserName !== 'chromium')`) because the API is Chromium-only. WebKit is not currently in CI.
+**Coverage:** `playwright-ts` CI regression runs across a Chromium/Firefox/WebKit matrix on every push and pull request. The nightly scheduled run additionally covers Chromium + Firefox at a longer timeout. `performance.memory` tests are skipped on non-Chromium browsers (`test.skip(browserName !== 'chromium')`) because the API is Chromium-only.
 
 ---
 
@@ -108,23 +108,13 @@ Risk assessment across the full portfolio. Each area is rated by **likelihood** 
 
 ---
 
-### Third-party API availability - 🟡 Medium
+### Third-party API / self-hosted stack availability - 🟡 Medium
 
-**Why it breaks:** Public APIs (JSONPlaceholder, Rick & Morty) have no SLA. Downtime or rate limiting causes test failures that are not caused by the code under test.
+**Why it breaks:** Rick & Morty is the portfolio's one remaining public API dependency and has no SLA - downtime or rate limiting causes test failures unrelated to the code under test. Separately, every project that targets a self-owned app (`movie-catalog-api`/`movie-catalog-ui`) boots that app fresh in the CI runner rather than hitting a deployed instance, so a misconfigured environment (wrong port, unhealthy container, unset secret) can look identical to a real regression if nothing checks reachability up front.
 
-**Impact:** False failures in CI, blocked pipelines, developer distrust of the test suite.
+**Impact:** False failures in CI, blocked pipelines, developer distrust of the test suite - and, without an explicit check, time lost debugging "failing tests" that are actually an environment that never came up.
 
-**Coverage:** `playwright-ts` global setup checks HTTP reachability for both target URLs before any test starts and fails with a clear message if either is unreachable. The nightly regression creates a GitHub issue on failure to distinguish infrastructure failures from test failures.
-
----
-
-### movie-catalog-ui - no E2E coverage yet - 🟡 Medium
-
-**Why it breaks:** `movie-catalog-ui` currently has component/unit coverage only (Vitest + Angular TestBed). Cross-component integration - a full add → search → filter → sort → edit → delete journey against a real running backend - is not exercised by any automated test. A regression that only manifests when real routing, real HTTP round-trips, and multiple components interact would pass the component suite and CI.
-
-**Impact:** A broken end-to-end user journey could ship undetected, since `api-testing-ts` / `api-testing-java` cover the API in isolation and the Vitest suite covers each UI component in isolation, but nothing currently covers the two together.
-
-**Coverage:** Mitigated for now by [`movie-catalog-ui`](movie-catalog-ui.md)'s deliberate testability-by-design (`data-testid` conventions, real `<button>` elements, `role="alert"` / `aria-live` notifications) built specifically so a Playwright E2E suite can be added without retrofitting the markup. Not yet built - tracked as planned work, not an accepted gap.
+**Coverage:** `playwright-ts`'s `globalSetup.ts` checks HTTP reachability for both `movie-catalog-ui` and `movie-catalog-api` before any test starts and fails fast with a clear message if either is down, rather than letting every test fail individually with a confusing error. The nightly regression additionally creates a GitHub issue on failure to distinguish infrastructure failures from code failures across runs.
 
 ---
 

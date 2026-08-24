@@ -26,33 +26,35 @@ The pyramid shape reflects investment, not importance. Unit tests run in millise
 
 ### Applications under test
 
-| App                                                     | Purpose in the suite                                         |
-|---------------------------------------------------------|--------------------------------------------------------------|
-| [SauceDemo](https://www.saucedemo.com)                  | Primary UI target - login, inventory, cart, checkout         |
-| [JSONPlaceholder](https://jsonplaceholder.typicode.com) | Public REST API - used for API layer and hybrid API+UI tests |
+| App                                                                 | Purpose in the suite                                                                                                                                                                                                                    |
+|---------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [movie-catalog-ui](https://github.com/EnesAkyel/movie-catalog-ui)   | Primary E2E target - a self-owned Angular front end, chosen deliberately over a third-party demo site so the suite could drive an app built with its own testability conventions (see [movie-catalog-ui strategy](movie-catalog-ui.md)) |
+| [movie-catalog-api](https://github.com/EnesAkyel/movie-catalog-api) | Backend the UI runs against; hit directly (not through the UI) for test-data seed/cleanup via `ApiClient`, and for the auth-setup project's storage-state capture                                                                       |
 
 ### What is tested
 
-- **Authentication** - login with valid/invalid/empty credentials, session persistence via storage state
-- **Core user journeys** - full checkout flow, cart management, product sorting
-- **Form validation** - negative paths, error message content and visibility
-- **API contracts** - response shape, status codes, CRUD operations
-- **Hybrid flows** - API state setup verified through UI (and vice versa)
-- **Network behavior** - request interception, payload validation, error simulation
-- **Accessibility** - axe-core scans per page, keyboard-only navigation
-- **Performance** - page load timing, JS heap size, end-to-end checkout duration
-- **Visual integrity** - pixel-level baseline comparison for key pages and components
-- **Multi-tab behavior** - popup handling, state preservation across windows
+- **Authentication** - login with valid/invalid credentials (real backend and mocked 401), `authGuard` redirects on every protected route, session persistence via `storageState`
+- **Core user journeys** - the movie catalog's CRUD paths: search/filter/sort/paginate, add a movie, delete with an inline (non-native) confirmation
+- **Form validation** - client-side reactive-forms validation and server-side error mapping (mocked 400/409), negative paths, error message content and visibility
+- **Test data seeding via API** - `ApiClient` creates/deletes disposable movies directly against `movie-catalog-api` so UI-driven delete/detail tests don't depend on or pollute shared seed data
+- **Hybrid flows** - API-seeded state verified through the UI (create via `ApiClient`, delete via the UI's inline confirmation and assert the result)
+- **Network behavior** - request interception/mocking, aborted requests, wildcard route patterns, request-count guards, artificial latency
+- **Accessibility** - axe-core scans (critical-impact) per page, a keyboard-only login → search → detail → back flow
+- **Performance** - page load timing, JS heap size (Chromium only), end-to-end add-movie round-trip duration
+- **Visual integrity** - pixel-level baseline comparison, currently one element-level case (the add-movie form grid)
+- **Multipage behavior** - a second page opened in the same authenticated `BrowserContext` reaches an authenticated route directly, proving auth state is context-scoped, not page-scoped
 
 ### What is not tested
 
-| Area                   | Reason                                                                                      |
-|------------------------|---------------------------------------------------------------------------------------------|
-| Backend / server logic | SauceDemo is a third-party demo app - no server access                                      |
-| Database state         | No DB access; API layer covers data contracts                                               |
-| Load / stress testing  | Out of scope for this framework; would require a dedicated tool (e.g., Gatling, k6)         |
-| Mobile native apps     | Web responsive layout covered via viewport config; native apps require a separate framework |
-| Security testing       | Addressed separately; not the responsibility of the functional test suite                   |
+| Area                       | Reason                                                                                                                   |
+|----------------------------|--------------------------------------------------------------------------------------------------------------------------|
+| Backend / server logic     | Covered by `api-testing-ts` / `api-testing-java` against the same `movie-catalog-api`, not duplicated here               |
+| Database state             | No DB access; the API layer covers data contracts                                                                        |
+| Load / stress testing      | Out of scope for this framework; covered for the same backend by `gatling-performance-tests` / `k6-performance-tests`    |
+| Full WCAG audit            | axe-core scans check critical-impact violations on the four main pages, not every WCAG success criterion or impact level |
+| Multi-tab / popup handling | `movie-catalog-ui` has no external links or `target="_blank"` anchors - there's no honest scenario to test this against  |
+| Mobile native apps         | Web responsive layout covered via viewport config; native apps require a separate framework                              |
+| Security testing           | Addressed separately; not the responsibility of the functional test suite                                                |
 
 ---
 
@@ -93,21 +95,13 @@ Chosen over the built-in HTML reporter for three capabilities: structured test m
 No hardcoded strings in test bodies. Two mechanisms:
 
 1. **`DataFactory`** - Faker.js-backed builders for user profiles, form data, and API payloads. Each call generates fresh values.
-2. **Auth storage state** - the `auth-setup` project runs once and writes a browser storage state file (`.auth/sauce.json`). Tests that need an authenticated session consume it via the `loggedInPage` fixture rather than repeating the login flow.
+2. **Auth storage state** - the `auth-setup` project runs once and writes a browser storage state file (`.auth/moviecatalog.json`). Tests that need an authenticated session consume it via the `loggedInPage`/`loggedInContext` fixtures rather than repeating the login flow.
 
 ---
 
 ## Environment Strategy
 
-Tests run against three environments controlled by the `ENV` variable:
-
-| Environment | Purpose                                             | Timeout |
-|-------------|-----------------------------------------------------|---------|
-| `dev`       | Active development - fast feedback                  | 30s     |
-| `staging`   | Pre-release validation - mirrors prod config        | 60s     |
-| `prod`      | Smoke check only - minimal footprint on live system | 60s     |
-
-Environment-specific URLs and credentials are stored in `.env.dev`, `.env.staging`, `.env.prod`. Local overrides go in `.env.local` (gitignored). CI reads from GitHub Secrets and resolves the correct set at runtime.
+No dev/staging/prod switching - there's no deployed multienvironment setup for `movie-catalog-ui`/`movie-catalog-api`, so the suite doesn't pretend there is one. `.env.local` (gitignored) holds `BASE_URL`, `API_URL`, credentials, and a single `TIMEOUT` for local runs. CI sets the same variables directly from GitHub Secrets and builds/boots both `movie-catalog-ui` and `movie-catalog-api` fresh in the runner (`boot-stack`) rather than pointing at a deployed instance - one less axis of config drift to debug. `globalSetup.ts` validates the required variables and checks HTTP reachability for both apps before any test runs.
 
 ---
 
@@ -115,18 +109,16 @@ Environment-specific URLs and credentials are stored in `.env.dev`, `.env.stagin
 
 Every test carries one or more tags that determine when it runs:
 
-| Tag            | Meaning                                                   | Runs in CI            |
-|----------------|-----------------------------------------------------------|-----------------------|
-| `@smoke`       | Minimal sanity - login, page load, key element visibility | Every push            |
-| `@regression`  | Full functional suite                                     | Every push (sharded)  |
-| `@e2e`         | Multi-step user journeys                                  | Part of `@regression` |
-| `@api`         | API-only tests                                            | Part of `@regression` |
-| `@a11y`        | Accessibility scans                                       | Part of `@regression` |
-| `@performance` | Timing and memory budgets                                 | Part of `@regression` |
-| `@visual`      | Screenshot baseline comparison                            | Manual trigger only   |
-| `@unit`        | Utility and factory tests                                 | Part of `@regression` |
+| Tag           | Meaning                                               | Runs in CI                                          |
+|---------------|-------------------------------------------------------|-----------------------------------------------------|
+| `@smoke`      | Minimal sanity - login, a sort case, a successful add | Every push (part of `@regression`)                  |
+| `@regression` | Full functional suite                                 | Every push, across a Chromium/Firefox/WebKit matrix |
+| `@a11y`       | axe-core accessibility scans                          | Part of `@regression`                               |
+| `@visual`     | Screenshot baseline comparison                        | Manual trigger only (`npm run test:visual`)         |
 
 Visual tests are excluded from the automated regression suite because they require committed baseline files that are OS-specific. Running them in CI without matching baselines produces false failures.
+
+`package.json` and `playwright.yml`'s `workflow_dispatch` dropdown also expose `api`/`unit` as selectable suites, carried over from an earlier iteration of this framework. No test in the current suite carries either tag - selecting them today runs zero tests. This is a known cleanup item, not a hidden capability.
 
 ---
 
@@ -135,9 +127,8 @@ Visual tests are excluded from the automated regression suite because they requi
 A test that fails intermittently without a code change is a liability, not an asset. The policy:
 
 - CI is configured with `retries: 2` on failure - a test must fail three consecutive times to be counted as a real failure
-- Intermittently failing tests are tagged `@flaky` and routed to a quarantine project that runs separately from the main regression suite
-- A quarantined test must be fixed or deleted within two sprints - it does not stay quarantined indefinitely
-- `waitForTimeout` is banned (`playwright/no-wait-for-timeout` ESLint rule is set to `warn`). Timing-based waits are the primary source of flakiness and are replaced with web-first assertions
+- `waitForTimeout` is discouraged (`playwright/no-wait-for-timeout` ESLint rule is set to `warn`). Timing-based waits are the primary source of flakiness and are replaced with web-first assertions or `page.clock` for deterministic timer control
+- A dedicated `@flaky`-tag quarantine project (separate from the main regression run) is aspirational, not yet built - `playwright.config.ts` currently defines `auth-setup`, `chromium`, `firefox`, `webkit`, and `chromium-authenticated` only
 
 ---
 
@@ -150,5 +141,5 @@ A test is considered complete when:
 - [ ] It uses a page object for all locators - no raw selectors in the test body
 - [ ] It uses `DataFactory` or storage state for test data - no hardcoded strings
 - [ ] It passes lint and format checks (`npm run lint && npm run format:check`)
-- [ ] It passes in CI on both Chromium and Firefox (where applicable)
+- [ ] It passes in CI across Chromium, Firefox, and WebKit (where applicable - e.g. `performance.memory` tests are Chromium-only by design)
 - [ ] Failure output is self-explanatory - the error message names what was expected and what was found

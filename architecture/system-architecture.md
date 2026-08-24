@@ -2,13 +2,11 @@
 
 ## Portfolio map
 
-Seven projects, six tools, five applications under test. This diagram shows how they all relate.
+Seven projects, six tools, four applications under test. This diagram shows how they all relate.
 
 ```mermaid
 graph TB
     subgraph Apps["Applications Under Test"]
-        SD["SauceDemo saucedemo.com"]
-        JP["JSONPlaceholder jsonplaceholder.typicode.com"]
         MC["movie-catalog-api Spring Boot REST API"]
         MU["movie-catalog-ui Angular 22 front end"]
         RM["Rick & Morty API rickandmortyapi.com"]
@@ -25,13 +23,12 @@ graph TB
         SJ["selenium-java Java · Selenium · TestNG · PageFactory"]
     end
 
-    PW -->|"E2E · a11y · visual · perf · auth"| SD
-    PW -->|"API functional · hybrid API+UI"| JP
+    PW -->|"E2E · a11y · visual · perf · network · auth"| MU
     AT -->|"smoke · contract · regression"| MC
     AJ -->|"smoke · contract · integration · regression"| MC
     MUT -->|"component/unit"| MU
     MU -.->|"HTTP (runtime, not test-time)"| MC
-    GA -->|"load · stress · spike · soak"| JP
+    GA -->|"load · stress · spike · soak"| MC
     RA -->|"contract · negative"| RM
     SJ -->|"E2E login · PIM · Leave"| OH
 ```
@@ -47,9 +44,9 @@ flowchart TD
     V["🔺 Visual Regression playwright-ts - screenshot baselines OS-specific · manual trigger only"]
     P["⚡ Performance playwright-ts - timing + heap budgets per page gatling-performance-tests - load · stress · spike · soak"]
     A["♿ Accessibility playwright-ts - axe-core scans + keyboard navigation"]
-    E["🌐 E2E / UI playwright-ts - SauceDemo full checkout, cart, auth selenium-java - OrangeHRM login · PIM · Leave"]
-    C["📋 Contract api-testing-ts - AJV schema files for movie-catalog-api api-testing-java - inline REST Assured assertions for movie-catalog-api RestAssuredContractTest - JSON Schema for Rick & Morty API playwright-ts - inline response shape assertions"]
-    F["🔗 API Functional api-testing-ts - CRUD + filter + negative paths api-testing-java - CRUD + studios + movies playwright-ts - JSONPlaceholder hybrid flows"]
+    E["🌐 E2E / UI playwright-ts - movie-catalog-ui full journey: auth, list, add/edit, detail, error popup selenium-java - OrangeHRM login · PIM · Leave"]
+    C["📋 Contract api-testing-ts - AJV schema files for movie-catalog-api api-testing-java - inline REST Assured assertions for movie-catalog-api RestAssuredContractTest - JSON Schema for Rick & Morty API pact-contract-tests - CDC interactions for movie-catalog-api"]
+    F["🔗 API Functional api-testing-ts - CRUD + filter + negative paths api-testing-java - CRUD + studios + movies"]
     U["🧪 Unit playwright-ts - DataFactory + utility tests movie-catalog-ui - components · forms · pipes (Vitest)"]
 
     V --> P --> A --> E --> C --> F --> U
@@ -65,7 +62,7 @@ The most complex project in the portfolio. All layers compose through Playwright
 flowchart TD
     T["Test files *.test.ts"]
     FX["Fixtures test.extend() - DI container"]
-    PO["Page Objects LoginPage · InventoryPage CartPage · CheckoutPage · BasePage"]
+    PO["Page Objects LoginPage · ListPage · AddMoviePage MovieDetailPage · ErrorPopup · BasePage"]
     UT["Utilities ApiClient · DataFactory AccessibilityHelper · VisualHelper DebugHelper · ENV · globalSetup"]
     PW["Playwright internals Browser · BrowserContext · Page APIRequestContext"]
 
@@ -78,19 +75,21 @@ flowchart TD
 
 ### Fixture composition
 
-Fixtures are declared as dependencies of each other, not of the test. A test that needs `checkoutPage` automatically gets `inventoryPage`, `cartPage`, `loginPage`, `page`, and `browser` - without declaring them.
+Fixtures are declared as dependencies of each other, not of the test. Most page-object fixtures (`listPage`, `addMoviePage`, `movieDetailPage`) depend only on the base `page` fixture directly, since this suite's flows don't chain through one another's set up the way a multistep checkout would. The one real dependency chain is the authenticated branch: a test that needs `loggedInAddMoviePage` automatically gets `loggedInContext` and `browser` without declaring them.
 
 ```mermaid
 flowchart LR
     browser --> context --> page
     page --> loginPage
-    loginPage --> inventoryPage
-    inventoryPage --> cartPage
-    cartPage --> checkoutPage
-    browser --> loggedInPage
+    page --> listPage
+    page --> addMoviePage
+    page --> movieDetailPage
+    browser --> loggedInContext
+    loggedInContext --> loggedInPage
+    loggedInContext --> loggedInAddMoviePage
 ```
 
-`loggedInPage` is the exception - it bypasses the login flow by loading a persisted storage state (`.auth/sauce.json`), giving tests a pre-authenticated `InventoryPage` with no login overhead.
+`loggedInContext`/`loggedInPage` are the exception - they bypass the login flow by loading a persisted storage state (`.auth/moviecatalog.json`), giving tests a pre-authenticated `ListPage` with no login overhead. `loginPage` itself still drives the real form when a test needs to exercise login directly (e.g. the one `@smoke` case that actually logs in through the UI).
 
 ---
 
@@ -139,10 +138,10 @@ No test in this suite reaches the real backend - `HttpTestingController` interce
 ```mermaid
 flowchart TD
     SIM["Simulation LoadSimulation · StressSimulation SpikeSimulation · SoakSimulation · BasicSimulation"]
-    SC["Scenario PostScenarios.browsePostsFlow (shared across all simulations)"]
+    SC["Scenario MovieScenarios (shared login + flow, across all simulations)"]
     CFG["Config.java thresholds · base URLs · user counts"]
     GE["Gatling Engine open model injection · assertions"]
-    API["JSONPlaceholder API https://jsonplaceholder.typicode.com"]
+    API["movie-catalog-api Spring Boot REST API (JWT auth)"]
 
     SIM -->|"injects users into"| SC
     SIM -->|"reads thresholds from"| CFG

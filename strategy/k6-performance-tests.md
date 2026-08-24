@@ -8,7 +8,7 @@
 
 ## Purpose
 
-Where `gatling-performance-tests` targets a public API (JSONPlaceholder) to demonstrate load simulation mechanics, this suite targets the self-owned `movie-catalog-api` - making threshold failures actionable. If a latency threshold is breached here, the problem is in code we control and can fix.
+This suite targets the self-owned `movie-catalog-api`, making threshold failures actionable - if a latency threshold is breached here, the problem is in code we control and can fix. `gatling-performance-tests` targets the same API from the Java side (see [Tool Choice](#tool-choice) for why both exist).
 
 The suite answers four questions:
 
@@ -22,6 +22,8 @@ The suite answers four questions:
 ## Scenario Design
 
 TypeScript is transpiled to CommonJS via esbuild and executed by the k6 runtime. All four scenarios share the same `BASE_URL` config, which is injected as an environment variable (`-e BASE_URL=...`) so CI and local runs target the same endpoints without code changes.
+
+Every scenario's `setup()` calls the shared `login()` helper (`helpers/auth.ts`) once, which posts `AUTH_USERNAME`/`AUTH_PASSWORD` to `/api/v1/auth/login` and returns the JWT. That token is passed into the default function via `setup()`'s return value and attached as an `Authorization: Bearer` header on every request - `movie-catalog-api`'s endpoints all require authentication except login itself.
 
 ### Load Profiles
 
@@ -70,11 +72,11 @@ A threshold failure in the `smoke` or `load` scenario is a genuine regression si
 
 **k6 over Gatling for this target** - `movie-catalog-api` is a TypeScript-adjacent project (the test suites `api-testing-ts` already use TypeScript). k6 keeps the performance layer in the same language ecosystem, making it easier to share type definitions and config patterns across test layers. Gatling (Java) was the right choice for the portfolio's Java-side projects.
 
-**k6 over JMeter** - k6 test scripts are code, not XML. They are version-controlled, reviewable in a pull request, and bundleable. JMeter's GUI-generated `.jmx` files are difficult to diff and review meaningfully.
+**k6 over JMeter** - k6 test scripts are code, not XML. They are version-controlled, reviewable in a pull request, and bundle-able. JMeter's GUI-generated `.jmx` files are difficult to diff and review meaningfully.
 
 **esbuild over webpack** - esbuild bundles all four scenario files in under a second. The webpack-based k6 template works but adds significant configuration overhead for no meaningful benefit at this project's scale.
 
-**Both k6 and Gatling in the portfolio** - having both demonstrates breadth across the two most common code-first load testing tools. They target different applications (movie-catalog-api vs JSONPlaceholder) and different language ecosystems (TypeScript vs Java), making them complementary rather than redundant.
+**Both k6 and Gatling in the portfolio** - having both demonstrates breadth across the two most common code-first load testing tools, and both target `movie-catalog-api` from a different language ecosystem (TypeScript vs Java). The overlap is deliberate: it shows the same performance questions (load, stress, spike) answered from both toolchains against the same real application, rather than picking one tool and calling load testing "done."
 
 ---
 
