@@ -2,7 +2,7 @@
 
 **Project:** [`gatling-performance-tests`](https://github.com/EnesAkyel/gatling-performance-tests)  
 **Stack:** Java · Gatling 3 · Maven  
-**Target:** JSONPlaceholder REST API (`https://jsonplaceholder.typicode.com`)
+**Target:** [`movie-catalog-api`](https://github.com/EnesAkyel/movie-catalog-api) (self-owned Spring Boot REST API)
 
 ---
 
@@ -23,7 +23,9 @@ Each question maps to a separate Gatling simulation. Running them in sequence gi
 
 ### Shared Scenario
 
-All simulations inject the same scenario - `PostScenarios.browsePostsFlow` - so the load profile is the only variable between runs. This makes simulation results directly comparable: any difference is caused by the load shape, not by a different user journey.
+`Load`, `Stress`, `Spike`, and `Soak` all inject the same scenario - `MovieScenarios.browseMoviesFlow` (list movies, get a movie by ID, filter by genre) - so the load profile is the only variable between runs, making results directly comparable. `Basic` instead runs three single-request scenarios (`getMovies`, `getMovie`, `getStudios`) once each, as a minimal reachability check per endpoint rather than a full user journey.
+
+Every scenario begins with a login step (`POST /api/v1/auth/login` using `AUTH_USERNAME`/`AUTH_PASSWORD`) that saves the returned JWT and attaches it as a `Bearer` token on every subsequent request - `movie-catalog-api`'s endpoints all require authentication except login itself.
 
 ### Load Profiles
 

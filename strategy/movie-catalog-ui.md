@@ -8,7 +8,7 @@
 
 ## Purpose
 
-Unlike the other projects in this portfolio, `movie-catalog-ui` is not a test framework pointed at someone else's application - it is the **application itself**, built by the same author, with its own component-level test suite and, deliberately, locator-friendly markup for a planned Playwright E2E layer on top. It fills the "unit / component" base of the pyramid for a real Angular app rather than a demo site, and it is the first project in the portfolio where the author controls both the code under test and the tests themselves at the UI layer.
+Unlike the other projects in this portfolio, `movie-catalog-ui` is not a test framework pointed at someone else's application - it is the **application itself**, built by the same author, with its own component-level test suite and, deliberately, locator-friendly markup that [`playwright-ts`](https://github.com/EnesAkyel/playwright-ts)'s full E2E layer is built on top of. It fills the "unit / component" base of the pyramid for a real Angular app rather than a demo site, and it is the first project in the portfolio where the author controls both the code under test and the tests themselves at the UI layer.
 
 ---
 
@@ -91,13 +91,15 @@ No test hits the real backend. Every spec that needs `MovieService` provides `pr
 - **`role="alert"` / `aria-live="polite"`** on success/error notifications, so an E2E test can assert on them without an arbitrary wait
 - **An inline Yes/No delete confirmation** instead of a single irreversible click, giving a real confirm/cancel flow to drive
 
-This is intentional groundwork, not incidental: the component suite here proves the UI logic is correct in isolation, and the markup conventions mean the eventual E2E layer can reuse the same `data-testid` values the component tests already assert against.
+This is intentional groundwork, not incidental: the component suite here proves the UI logic is correct in isolation, and the markup conventions mean `playwright-ts`'s E2E layer reuses the same `data-testid` values the component tests already assert against.
 
 ---
 
-## Planned: E2E Layer
+## E2E Layer (`playwright-ts`)
 
-`movie-catalog-ui` + `movie-catalog-api` running together (`docker compose up` in the API repo) is the intended target for a forthcoming Playwright E2E suite - full user journeys (add → search → filter → sort → edit → delete) exercised end-to-end against a real backend, complementing the component-level suite documented here and the API-level suites in `api-testing-ts` / `api-testing-java`. Until that suite exists, end-to-end coverage of this application is a known, accepted gap (see [Risk Areas](risk-areas.md) and [Coverage Matrix](coverage-matrix.md)).
+`movie-catalog-ui` + `movie-catalog-api` running together (`docker compose up` in the API repo) is the target for [`playwright-ts`](https://github.com/EnesAkyel/playwright-ts)'s full Playwright suite - the project this component-level suite was deliberately built to support. It covers every route (`/login`, `/list`, `/genre/:genre`, `/add`, `/movie/:mid`, `/movie/:mid/edit`) with full user journeys (add → search → filter → sort → edit → delete) exercised end-to-end against a real backend, complementing the component-level suite documented here and the API-level suites in `api-testing-ts` / `api-testing-java`. It also covers accessibility (axe-core, critical-impact violations), an element-level visual regression baseline on the add-movie form grid, performance budgets (navigation timing, JS heap, add-movie round-trip duration), network-mocking depth (aborted requests, wildcard route patterns, request-count guards, artificial latency), and cross-cutting NFRs (a keyboard-only login → search → detail → back flow, and a `page.on('dialog')` regression guard for the app's deliberate inline Yes/No delete confirmation).
+
+The case-by-case breakdown lives in [`playwright-ts`'s test plan](https://github.com/EnesAkyel/movie-catalog-ui/blob/main/docs/playwright-test-plan.md) - written against this app's `data-testid`/ARIA conventions, one case per section (auth, list, add/edit, detail, error popup, accessibility, network mocking, performance, cross-cutting NFRs). A handful of additional cases (validator boundary/pattern coverage, the edit-submit round trip) were found during a full-project review after the plan's initial sections shipped and are tracked as proposed, not-yet-implemented additions in that doc.
 
 ---
 
